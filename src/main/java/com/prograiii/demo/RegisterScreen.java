@@ -8,17 +8,22 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+
 
 import java.io.*;
 
 public class RegisterScreen {
     private LoginRegisterScreen mainController;
+    private Stage primaryStage; // Añadir primaryStage como campo de instancia
 
-    public RegisterScreen(LoginRegisterScreen mainController) {
+    public RegisterScreen(LoginRegisterScreen mainController, Stage primaryStage) {
         this.mainController = mainController;
+        this.primaryStage = primaryStage; // Inicializar primaryStage en el constructor
     }
 
-    public Scene createRegisterScreen(Stage primaryStage) {
+    public Scene createRegisterScreen() { // Ya no necesita primaryStage como parámetro aquí
         VBox root = new VBox(10);
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(20));
@@ -39,13 +44,14 @@ public class RegisterScreen {
             String username = usernameField.getText();
             String password = passwordField.getText();
             if (userExists(username)) {
-                System.out.println("El usuario ya existe.");
+                showAlert("Error", "El usuario ya existe.");
             } else {
                 saveUser(username, password);
-                System.out.println("Usuario registrado exitosamente.");
+                showAlert("Registro exitoso", "Usuario registrado correctamente.");
                 primaryStage.setScene(mainController.getLoginRegisterScene());
             }
         });
+
 
         return new Scene(root, 300, 250);
     }
@@ -60,7 +66,8 @@ public class RegisterScreen {
                 }
             }
         } catch (IOException e) {
-            // archivo no existe aún, no hay usuarios
+            // archivo no existe aún, no hay usuarios, se puede ignorar o registrar
+            System.out.println("Archivo de usuarios no encontrado. Se creará al registrar el primer usuario.");
         }
         return false;
     }
@@ -71,6 +78,16 @@ public class RegisterScreen {
             writer.newLine();
         } catch (IOException e) {
             e.printStackTrace();
+            showAlert("Error de Guardado", "No se pudo guardar el usuario.");
         }
+    }
+
+    // Método showAlert añadido
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }

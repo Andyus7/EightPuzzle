@@ -31,20 +31,39 @@ public class PuzzleApp extends Application {
     private Button helpButton;
     private Button highlightedButton = null;
 
+    // NUEVOS CAMPOS PARA CONSTRUCTOR PERSONALIZADO
+    private String username;
+    private boolean intelligentMode;
+
+    // Constructor personalizado (usado desde MainMenu)
+    public PuzzleApp(String username, boolean intelligentMode) {
+        this.username = username;
+        this.intelligentMode = intelligentMode;
+        this.game = new PuzzleGame(username, intelligentMode); // Usa el constructor adecuado
+    }
+
+    // Constructor por defecto (necesario para Application.launch)
+    public PuzzleApp() {
+    }
+
     @Override
     public void start(Stage primaryStage) throws IOException {
-        game = new PuzzleGame();
+        // Si no se ha inicializado el juego (porque se usó launch), inicializar aquí
+        if (game == null) {
+            username = "Invitado";
+            intelligentMode = false;
+            game = new PuzzleGame(username, intelligentMode);
+        }
+
         buttons = new Button[GRID_SIZE][GRID_SIZE];
 
-        // Layout principal
         BorderPane root = new BorderPane();
 
-        // Panel para la información (timer, movimientos, ayuda)
+        // PANEL SUPERIOR
         HBox infoPanel = new HBox(15);
         infoPanel.setAlignment(Pos.TOP_RIGHT);
         infoPanel.setPadding(new Insets(10));
 
-        // Botón de ayuda
         Image lightbulbImage = new Image(getClass().getResourceAsStream("/icons/lightbulb.png"));
         ImageView lightbulbIcon = new ImageView(lightbulbImage);
         lightbulbIcon.setFitHeight(20);
@@ -54,7 +73,6 @@ public class PuzzleApp extends Application {
         helpButton.setOnAction(event -> suggestMove());
         infoPanel.getChildren().add(helpButton);
 
-        // Timer
         Image clockImage = new Image(getClass().getResourceAsStream("/icons/clock.png"));
         ImageView clockIcon = new ImageView(clockImage);
         clockIcon.setFitHeight(20);
@@ -63,7 +81,6 @@ public class PuzzleApp extends Application {
         infoPanel.getChildren().addAll(clockIcon, timeLabel);
         startTimer();
 
-        // Movimientos
         Image handImage = new Image(getClass().getResourceAsStream("/icons/hand.png"));
         ImageView handIcon = new ImageView(handImage);
         handIcon.setFitHeight(20);
@@ -73,14 +90,13 @@ public class PuzzleApp extends Application {
 
         root.setTop(infoPanel);
 
-        // Grid del puzzle
+        // PANEL DEL TABLERO
         GridPane gridPane = new GridPane();
         gridPane.setPadding(new Insets(20));
         gridPane.setHgap(10);
         gridPane.setVgap(10);
         gridPane.setAlignment(Pos.CENTER);
 
-        // Crear los botones y agregarlos a la cuadrícula
         int[][] board = game.getCurrentState().getBoard();
         for (int i = 0; i < GRID_SIZE; i++) {
             for (int j = 0; j < GRID_SIZE; j++) {
@@ -97,7 +113,7 @@ public class PuzzleApp extends Application {
         root.setCenter(gridPane);
 
         Scene scene = new Scene(root, 600, 650);
-        primaryStage.setTitle("8-Puzzle");
+        primaryStage.setTitle("8-Puzzle - " + (intelligentMode ? "Modo Inteligente" : "Modo Normal"));
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -120,8 +136,9 @@ public class PuzzleApp extends Application {
             updateBoard();
             if (game.isGoalReached()) {
                 timer.stop();
-                System.out.println("¡Puzzle resuelto en " + (seconds / 60) + " minutos y " + (seconds % 60) + " segundos con " + movesCount + " movimientos!");
-                // Aquí podríamos añadir lógica para indicar que el juego terminó visualmente
+                System.out.println("¡Puzzle resuelto por " + username + " en " +
+                        (seconds / 60) + " minutos y " + (seconds % 60) + " segundos con " + movesCount + " movimientos!");
+                // Puedes guardar puntaje aquí si deseas
             }
         }
     }
@@ -131,10 +148,10 @@ public class PuzzleApp extends Application {
         for (int i = 0; i < GRID_SIZE; i++) {
             for (int j = 0; j < GRID_SIZE; j++) {
                 buttons[i][j].setText(board[i][j] == 0 ? "" : String.valueOf(board[i][j]));
-                buttons[i][j].setStyle(""); // Resetear cualquier estilo anterior
+                buttons[i][j].setStyle(""); // Resetear estilo
             }
         }
-        highlightedButton = null; // Deseleccionar el botón previamente sugerido
+        highlightedButton = null;
     }
 
     private void suggestMove() {
@@ -174,6 +191,6 @@ public class PuzzleApp extends Application {
     }
 
     public static void main(String[] args) {
-        launch();
+        launch(); // Solo útil si se ejecuta directamente sin pasar parámetros
     }
 }

@@ -8,19 +8,32 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
-public class LoginScreen {
-    private LoginRegisterScreen mainController;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 
-    public LoginScreen(LoginRegisterScreen mainController) {
+
+public class LoginScreen {
+    private Scene menuScene;
+    private LoginRegisterScreen mainController;
+    private Stage primaryStage; // Añadir primaryStage como campo de instancia
+
+    public LoginScreen(LoginRegisterScreen mainController, Stage primaryStage) {
         this.mainController = mainController;
+        this.primaryStage = primaryStage; // Inicializar primaryStage en el constructor
     }
 
-    public Scene createLoginScreen(Stage primaryStage) {
+    public void goToMainMenu(String username) {
+        // Pasar primaryStage y mainController al constructor de MainMenu
+        MainMenu menuScreen = new MainMenu(username, this.primaryStage, this.mainController);
+        this.menuScene = menuScreen.createMainMenuScene(); // createMainMenuScene ya no necesita primaryStage
+        this.primaryStage.setScene(menuScene);
+    }
+
+    public Scene createLoginScreen() { // Ya no necesita primaryStage como parámetro aquí
         VBox root = new VBox(10);
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(20));
@@ -42,9 +55,11 @@ public class LoginScreen {
             String password = passwordField.getText();
             if (verifyCredentials(username, password)) {
                 System.out.println("Inicio de sesión exitoso.");
-                // Aquí puedes cargar la pantalla del juego
+                showAlert("Éxito", "Inicio de sesión exitoso.");
+                goToMainMenu(username); // Navegar al menú principal
             } else {
                 System.out.println("Usuario o contraseña incorrectos.");
+                showAlert("Error", "Usuario o contraseña incorrectos.");
             }
         });
 
@@ -62,7 +77,16 @@ public class LoginScreen {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            showAlert("Error de Archivo", "No se pudo leer el archivo de usuarios.");
         }
         return false;
+    }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }
