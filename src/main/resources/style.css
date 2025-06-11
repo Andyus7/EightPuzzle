@@ -1,0 +1,5 @@
+/* styles.css */
+.password-field {
+    -fx-display-caret: true; /* Asegura que el cursor se muestre */
+    -fx-echo-char: "*"; /* Cambia el carácter de eco a un asterisco */
+}
