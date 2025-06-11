@@ -3,10 +3,10 @@ package com.prograiii.demo;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
@@ -18,7 +18,7 @@ import javafx.util.Duration;
 import java.io.IOException;
 import java.util.List;
 
-public class PuzzleApp extends Application {
+public class PuzzleApp { // Ya no extiende Application directamente, es una clase de escena
 
     private PuzzleGame game;
     private Button[][] buttons;
@@ -31,62 +31,66 @@ public class PuzzleApp extends Application {
     private Button helpButton;
     private Button highlightedButton = null;
 
-    // NUEVOS CAMPOS PARA CONSTRUCTOR PERSONALIZADO
     private String username;
     private boolean intelligentMode;
+    private Stage primaryStage; // Referencia al Stage principal
+    private LoginRegisterScreen mainController; // Referencia al controlador principal
 
-    // Constructor personalizado (usado desde MainMenu)
-    public PuzzleApp(String username, boolean intelligentMode) {
+    // Constructor actualizado para recibir Stage y mainController
+    public PuzzleApp(String username, boolean intelligentMode, Stage primaryStage, LoginRegisterScreen mainController) {
         this.username = username;
         this.intelligentMode = intelligentMode;
-        this.game = new PuzzleGame(username, intelligentMode); // Usa el constructor adecuado
+        this.primaryStage = primaryStage;
+        this.mainController = mainController;
+        this.game = new PuzzleGame(username, intelligentMode);
     }
 
-    // Constructor por defecto (necesario para Application.launch)
-    public PuzzleApp() {
-    }
-
-    @Override
-    public void start(Stage primaryStage) throws IOException {
-        // Si no se ha inicializado el juego (porque se usó launch), inicializar aquí
-        if (game == null) {
-            username = "Invitado";
-            intelligentMode = false;
-            game = new PuzzleGame(username, intelligentMode);
-        }
-
+    // Método para crear la escena del juego
+    public Scene createGameScene() {
         buttons = new Button[GRID_SIZE][GRID_SIZE];
 
         BorderPane root = new BorderPane();
 
-        // PANEL SUPERIOR
+        // PANEL SUPERIOR (infoPanel)
         HBox infoPanel = new HBox(15);
         infoPanel.setAlignment(Pos.TOP_RIGHT);
         infoPanel.setPadding(new Insets(10));
 
-        Image lightbulbImage = new Image(getClass().getResourceAsStream("/icons/lightbulb.png"));
-        ImageView lightbulbIcon = new ImageView(lightbulbImage);
-        lightbulbIcon.setFitHeight(20);
-        lightbulbIcon.setFitWidth(20);
-        helpButton = new Button();
-        helpButton.setGraphic(lightbulbIcon);
-        helpButton.setOnAction(event -> suggestMove());
-        infoPanel.getChildren().add(helpButton);
+        try { // Manejo de errores para las imágenes
+            Image lightbulbImage = new Image(getClass().getResourceAsStream("/icons/lightbulb.png"));
+            ImageView lightbulbIcon = new ImageView(lightbulbImage);
+            lightbulbIcon.setFitHeight(20);
+            lightbulbIcon.setFitWidth(20);
+            helpButton = new Button();
+            helpButton.setGraphic(lightbulbIcon);
+            helpButton.setOnAction(event -> suggestMove());
+            infoPanel.getChildren().add(helpButton);
 
-        Image clockImage = new Image(getClass().getResourceAsStream("/icons/clock.png"));
-        ImageView clockIcon = new ImageView(clockImage);
-        clockIcon.setFitHeight(20);
-        clockIcon.setFitWidth(20);
-        timeLabel = new Label("Tiempo: 00:00");
-        infoPanel.getChildren().addAll(clockIcon, timeLabel);
-        startTimer();
+            Image clockImage = new Image(getClass().getResourceAsStream("/icons/clock.png"));
+            ImageView clockIcon = new ImageView(clockImage);
+            clockIcon.setFitHeight(20);
+            clockIcon.setFitWidth(20);
+            timeLabel = new Label("Tiempo: 00:00");
+            infoPanel.getChildren().addAll(clockIcon, timeLabel);
 
-        Image handImage = new Image(getClass().getResourceAsStream("/icons/hand.png"));
-        ImageView handIcon = new ImageView(handImage);
-        handIcon.setFitHeight(20);
-        handIcon.setFitWidth(20);
-        movesLabel = new Label("Movimientos: 0");
-        infoPanel.getChildren().addAll(handIcon, movesLabel);
+            Image handImage = new Image(getClass().getResourceAsStream("/icons/hand.png"));
+            ImageView handIcon = new ImageView(handImage);
+            handIcon.setFitHeight(20);
+            handIcon.setFitWidth(20);
+            movesLabel = new Label("Movimientos: 0");
+            infoPanel.getChildren().addAll(handIcon, movesLabel);
+
+        } catch (Exception e) {
+            System.err.println("Error cargando íconos: " + e.getMessage());
+            // Fallback en caso de que los íconos no se encuentren
+            helpButton = new Button("Ayuda");
+            helpButton.setOnAction(event -> suggestMove());
+            timeLabel = new Label("Tiempo: 00:00");
+            movesLabel = new Label("Movimientos: 0");
+            infoPanel.getChildren().addAll(helpButton, timeLabel, movesLabel);
+        }
+
+        startTimer(); // Iniciar el temporizador al crear la escena
 
         root.setTop(infoPanel);
 
@@ -102,6 +106,7 @@ public class PuzzleApp extends Application {
             for (int j = 0; j < GRID_SIZE; j++) {
                 Button button = new Button(board[i][j] == 0 ? "" : String.valueOf(board[i][j]));
                 button.setMinSize(80, 80);
+                button.setStyle("-fx-font-size: 24px; -fx-background-color: #f0f0f0; -fx-border-color: #ccc; -fx-border-width: 1px;"); // Estilo inicial
                 final int row = i;
                 final int col = j;
                 button.setOnAction(event -> handleTileClick(row, col));
@@ -109,16 +114,34 @@ public class PuzzleApp extends Application {
                 gridPane.add(button, j, i);
             }
         }
-
         root.setCenter(gridPane);
 
+        // PANEL INFERIOR (Botón de Regresar)
+        HBox bottomPanel = new HBox(10);
+        bottomPanel.setAlignment(Pos.CENTER);
+        bottomPanel.setPadding(new Insets(10));
+        Button backToMenuButton = new Button("Volver al Menú Principal");
+        backToMenuButton.setOnAction(e -> {
+            timer.stop(); // Detener el temporizador al salir del juego
+            primaryStage.setScene(mainController.getLoginRegisterScene()); // O mainController.getMainMenuScene() si la tienes
+        });
+        bottomPanel.getChildren().add(backToMenuButton);
+        root.setBottom(bottomPanel);
+
+
         Scene scene = new Scene(root, 600, 650);
-        primaryStage.setTitle("8-Puzzle - " + (intelligentMode ? "Modo Inteligente" : "Modo Normal"));
-        primaryStage.setScene(scene);
-        primaryStage.show();
+        return scene;
     }
 
     private void startTimer() {
+        seconds = 0; // Resetear tiempo al iniciar el juego
+        movesCount = 0; // Resetear movimientos
+        timeLabel.setText("Tiempo: 00:00");
+        movesLabel.setText("Movimientos: 0");
+
+        if (timer != null) {
+            timer.stop(); // Detener si ya estaba corriendo
+        }
         timer = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
             seconds++;
             int minutes = seconds / 60;
@@ -136,9 +159,15 @@ public class PuzzleApp extends Application {
             updateBoard();
             if (game.isGoalReached()) {
                 timer.stop();
-                System.out.println("¡Puzzle resuelto por " + username + " en " +
-                        (seconds / 60) + " minutos y " + (seconds % 60) + " segundos con " + movesCount + " movimientos!");
-                // Puedes guardar puntaje aquí si deseas
+                double score = calculateScore(seconds, movesCount);
+                String message = String.format("¡Puzzle resuelto por %s en %02d:%02d con %d movimientos!\nTu puntuación: %.2f",
+                        username, (seconds / 60), (seconds % 60), movesCount, score);
+
+                // Guardar la puntuación en el archivo
+                ScoreManager scoreManager = new ScoreManager();
+                scoreManager.updateUserScore(username, seconds, movesCount, score);
+
+                showAlert("¡Felicidades!", message);
             }
         }
     }
@@ -148,7 +177,7 @@ public class PuzzleApp extends Application {
         for (int i = 0; i < GRID_SIZE; i++) {
             for (int j = 0; j < GRID_SIZE; j++) {
                 buttons[i][j].setText(board[i][j] == 0 ? "" : String.valueOf(board[i][j]));
-                buttons[i][j].setStyle(""); // Resetear estilo
+                buttons[i][j].setStyle("-fx-font-size: 24px; -fx-background-color: #f0f0f0; -fx-border-color: #ccc; -fx-border-width: 1px;"); // Resetear estilo
             }
         }
         highlightedButton = null;
@@ -185,12 +214,34 @@ public class PuzzleApp extends Application {
             }
 
             if (movedRow != -1 && movedCol != -1) {
+                // Simula un click para mover la pieza sugerida
                 handleTileClick(movedRow, movedCol);
             }
+        } else {
+            showAlert("Sugerencia", "No hay un mejor movimiento inmediato disponible.");
         }
     }
 
-    public static void main(String[] args) {
-        launch(); // Solo útil si se ejecuta directamente sin pasar parámetros
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    // Calcula una puntuación: menos tiempo y menos movimientos = mayor puntuación
+    private double calculateScore(int timeInSeconds, int moves) {
+        // Una fórmula de ejemplo:
+        // Puntuación base alta, penalizada por tiempo y movimientos.
+        // Los movimientos tienen un peso ligeramente mayor que el tiempo.
+        double baseScore = 10000.0;
+        double timePenalty = timeInSeconds * 1.5; // Cada segundo resta 1.5 puntos
+        double movesPenalty = moves * 5.0; // Cada movimiento resta 5 puntos
+
+        double score = baseScore - timePenalty - movesPenalty;
+
+        // Asegurarse de que la puntuación no sea negativa
+        return Math.max(0, score);
     }
 }

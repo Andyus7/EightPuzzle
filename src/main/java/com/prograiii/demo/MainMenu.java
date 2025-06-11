@@ -12,58 +12,73 @@ import javafx.stage.Stage;
 public class MainMenu {
 
     private String username;
-    private Stage primaryStage; // Campo para primaryStage
-    private LoginRegisterScreen mainController; // Campo para mainController
+    private Stage primaryStage;
+    private LoginRegisterScreen mainController;
 
-    // Constructor corregido para recibir Stage y LoginRegisterScreen
     public MainMenu(String username, Stage primaryStage, LoginRegisterScreen mainController) {
         this.username = username;
         this.primaryStage = primaryStage;
         this.mainController = mainController;
     }
 
-    public Scene createMainMenuScene() { // No necesita primaryStage como parámetro, ya es un campo
+    public String getUsername() {
+        return username;
+    }
+
+    public Scene createMainMenuScene() {
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(20));
+        root.setStyle("-fx-background-color: #F8F8F8;"); // Fondo más claro
 
-        // Título del juego
         Label title = new Label("8- PUZZLE GAME");
-        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        title.setStyle("-fx-font-size: 40px; -fx-font-weight: bold; -fx-text-fill: #333;");
         BorderPane.setAlignment(title, Pos.CENTER);
         root.setTop(title);
 
-        // Bienvenida al usuario
         Label welcomeLabel = new Label("Bienvenido, " + username + "!");
-        welcomeLabel.setStyle("-fx-font-size: 16px;");
+        welcomeLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #555;");
         BorderPane.setAlignment(welcomeLabel, Pos.CENTER);
-        root.setBottom(welcomeLabel);
+        root.setBottom(welcomeLabel); // Se moverá al centro-abajo en el VBox
 
-        // Controles del juego (Ejemplo, puedes expandirlo)
-        VBox gameControls = new VBox(15);
+        VBox gameControls = new VBox(20); // Más espacio entre botones
         gameControls.setAlignment(Pos.CENTER);
         gameControls.setPadding(new Insets(20));
 
         Button startGameButton = new Button("Iniciar Juego");
-        startGameButton.setPrefWidth(150);
+        startGameButton.setPrefSize(200, 50); // Mayor tamaño para los botones
+        startGameButton.setStyle("-fx-font-size: 20px; -fx-background-color: #4CAF50; -fx-text-fill: white; -fx-background-radius: 5;");
         startGameButton.setOnAction(e -> {
-            // Aquí deberías navegar a la escena del juego 8-puzzle
             System.out.println("Iniciando juego para " + username);
-            // Ejemplo: Assuming you have a PuzzleGame class and a createPuzzleGameScene method
-            // PuzzleGame puzzleGame = new PuzzleGame(primaryStage, this.mainController);
-            // primaryStage.setScene(puzzleGame.createPuzzleGameScene());
+            // Crea una nueva instancia de PuzzleApp y muestra su escena
+            // Por ahora, el modo inteligente es falso por defecto.
+            PuzzleApp puzzleApp = new PuzzleApp(username, false, primaryStage, mainController);
+            primaryStage.setScene(puzzleApp.createGameScene());
+            primaryStage.setTitle("8-Puzzle - Jugando");
         });
 
+        Button scoresButton = new Button("Ver Puntajes");
+        scoresButton.setPrefSize(200, 50);
+        scoresButton.setStyle("-fx-font-size: 20px; -fx-background-color: #008CBA; -fx-text-fill: white; -fx-background-radius: 5;");
+        scoresButton.setOnAction(e -> {
+            System.out.println("Mostrando puntajes...");
+            // Pasar el username actual a ScoreDisplayScreen
+            ScoreDisplayScreen scoreDisplay = new ScoreDisplayScreen(primaryStage, mainController, username);
+            primaryStage.setScene(scoreDisplay.createScoreScene());
+            primaryStage.setTitle("8-Puzzle - Mejores Puntajes");
+        });
+
+
         Button logoutButton = new Button("Cerrar Sesión");
-        logoutButton.setPrefWidth(150);
+        logoutButton.setPrefSize(200, 50);
+        logoutButton.setStyle("-fx-font-size: 20px; -fx-background-color: #f44336; -fx-text-fill: white; -fx-background-radius: 5;");
         logoutButton.setOnAction(e -> {
-            // Regresar a la pantalla de Login/Registro
             primaryStage.setScene(mainController.getLoginRegisterScene());
             System.out.println("Sesión cerrada.");
         });
 
-        gameControls.getChildren().addAll(startGameButton, logoutButton);
+        gameControls.getChildren().addAll(welcomeLabel, startGameButton, scoresButton, logoutButton); // Añade welcomeLabel aquí
         root.setCenter(gameControls);
 
-        return new Scene(root, 600, 400); // Tamaño de la ventana del menú principal
+        return new Scene(root, 600, 400);
     }
 }

@@ -43,6 +43,7 @@ public class LoginScreen {
         usernameField.setPromptText("Usuario");
         TextField passwordField = new TextField();
         passwordField.setPromptText("Contraseña");
+
         Button loginButton = new Button("Iniciar");
         Button backButton = new Button("Volver");
 
@@ -53,6 +54,7 @@ public class LoginScreen {
         loginButton.setOnAction(e -> {
             String username = usernameField.getText();
             String password = passwordField.getText();
+
             if (verifyCredentials(username, password)) {
                 System.out.println("Inicio de sesión exitoso.");
                 showAlert("Éxito", "Inicio de sesión exitoso.");
@@ -70,16 +72,19 @@ public class LoginScreen {
         try (BufferedReader reader = new BufferedReader(new FileReader("usuarios.txt"))) {
             String line;
             while ((line = reader.readLine()) != null) {
+                // Dividir la línea por el delimitador ';'
                 String[] datos = line.split(";");
-                if (datos.length == 2 && datos[0].equals(username) && datos[1].equals(password)) {
-                    return true;
+
+                // SOLO verificar usuario y contraseña (los dos primeros campos)
+                if (datos.length >= 2 && datos[0].equals(username) && datos[1].equals(password)) {
+                    return true; // Credenciales válidas
                 }
             }
         } catch (IOException e) {
             e.printStackTrace();
-            showAlert("Error de Archivo", "No se pudo leer el archivo de usuarios.");
+            showAlert("Error de Archivo", "No se pudo leer el archivo de usuarios. " + e.getMessage());
         }
-        return false;
+        return false; // Credenciales no válidas o usuario no encontrado
     }
 
     private void showAlert(String title, String message) {
