@@ -16,9 +16,9 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.*;
 
-public class PuzzleApp { // Ya no extiende Application directamente, es una clase de escena
+public class PuzzleApp {
 
     private PuzzleGame game;
     private Button[][] buttons;
@@ -33,10 +33,17 @@ public class PuzzleApp { // Ya no extiende Application directamente, es una clas
 
     private String username;
     private boolean intelligentMode;
-    private Stage primaryStage; // Referencia al Stage principal
-    private LoginRegisterScreen mainController; // Referencia al controlador principal
+    private Stage primaryStage;
+    private LoginRegisterScreen mainController;
 
-    // Constructor actualizado para recibir Stage y mainController
+    private List<PuzzleState> solutionPath;
+    private int currentSolutionStep = 0;
+    private Timeline solutionTimeline;
+
+    // AÑADIR ESTE CAMPO DE INSTANCIA para el botón Resolver
+    private Button solveButton;
+
+    // Constructor para Modo Normal (random)
     public PuzzleApp(String username, boolean intelligentMode, Stage primaryStage, LoginRegisterScreen mainController) {
         this.username = username;
         this.intelligentMode = intelligentMode;
@@ -45,18 +52,27 @@ public class PuzzleApp { // Ya no extiende Application directamente, es una clas
         this.game = new PuzzleGame(username, intelligentMode);
     }
 
-    // Método para crear la escena del juego
+    // Constructor para Modo Inteligente (con estados definidos)
+    public PuzzleApp(String username, boolean intelligentMode, Stage primaryStage, LoginRegisterScreen mainController, PuzzleState initialState, PuzzleState goalState) {
+        this.username = username;
+        this.intelligentMode = intelligentMode;
+        this.primaryStage = primaryStage;
+        this.mainController = mainController;
+        this.game = new PuzzleGame(username, intelligentMode, initialState, goalState);
+    }
+
     public Scene createGameScene() {
         buttons = new Button[GRID_SIZE][GRID_SIZE];
 
         BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: #F8F8F8;");
 
         // PANEL SUPERIOR (infoPanel)
         HBox infoPanel = new HBox(15);
         infoPanel.setAlignment(Pos.TOP_RIGHT);
         infoPanel.setPadding(new Insets(10));
 
-        try { // Manejo de errores para las imágenes
+        try {
             Image lightbulbImage = new Image(getClass().getResourceAsStream("/icons/lightbulb.png"));
             ImageView lightbulbIcon = new ImageView(lightbulbImage);
             lightbulbIcon.setFitHeight(20);
@@ -64,6 +80,7 @@ public class PuzzleApp { // Ya no extiende Application directamente, es una clas
             helpButton = new Button();
             helpButton.setGraphic(lightbulbIcon);
             helpButton.setOnAction(event -> suggestMove());
+            helpButton.setDisable(intelligentMode);
             infoPanel.getChildren().add(helpButton);
 
             Image clockImage = new Image(getClass().getResourceAsStream("/icons/clock.png"));
@@ -82,15 +99,15 @@ public class PuzzleApp { // Ya no extiende Application directamente, es una clas
 
         } catch (Exception e) {
             System.err.println("Error cargando íconos: " + e.getMessage());
-            // Fallback en caso de que los íconos no se encuentren
             helpButton = new Button("Ayuda");
             helpButton.setOnAction(event -> suggestMove());
+            helpButton.setDisable(intelligentMode);
             timeLabel = new Label("Tiempo: 00:00");
             movesLabel = new Label("Movimientos: 0");
             infoPanel.getChildren().addAll(helpButton, timeLabel, movesLabel);
         }
 
-        startTimer(); // Iniciar el temporizador al crear la escena
+        startTimer();
 
         root.setTop(infoPanel);
 
@@ -106,7 +123,7 @@ public class PuzzleApp { // Ya no extiende Application directamente, es una clas
             for (int j = 0; j < GRID_SIZE; j++) {
                 Button button = new Button(board[i][j] == 0 ? "" : String.valueOf(board[i][j]));
                 button.setMinSize(80, 80);
-                button.setStyle("-fx-font-size: 24px; -fx-background-color: #f0f0f0; -fx-border-color: #ccc; -fx-border-width: 1px;"); // Estilo inicial
+                button.setStyle("-fx-font-size: 24px; -fx-background-color: #f0f0f0; -fx-border-color: #ccc; -fx-border-width: 1px;");
                 final int row = i;
                 final int col = j;
                 button.setOnAction(event -> handleTileClick(row, col));
@@ -116,31 +133,65 @@ public class PuzzleApp { // Ya no extiende Application directamente, es una clas
         }
         root.setCenter(gridPane);
 
-        // PANEL INFERIOR (Botón de Regresar)
-        HBox bottomPanel = new HBox(10);
+        // Panel inferior con botones de control
+        HBox bottomPanel = new HBox(20);
         bottomPanel.setAlignment(Pos.CENTER);
         bottomPanel.setPadding(new Insets(10));
-        Button backToMenuButton = new Button("Volver al Menú Principal");
-        backToMenuButton.setOnAction(e -> {
-            timer.stop(); // Detener el temporizador al salir del juego
-            primaryStage.setScene(mainController.getLoginRegisterScene()); // O mainController.getMainMenuScene() si la tienes
+
+        Button replayButton = new Button("Volver a Jugar");
+        replayButton.setPrefWidth(180);
+        replayButton.setPrefHeight(40);
+        replayButton.setStyle("-fx-font-size: 16px; -fx-background-color: #FFA000; -fx-text-fill: white; -fx-background-radius: 5;");
+        replayButton.setOnAction(e -> {
+            timer.stop();
+            if (solutionTimeline != null) solutionTimeline.stop();
+            if (intelligentMode) {
+                IntelligentModeSetupScreen setupScreen = new IntelligentModeSetupScreen(primaryStage, mainController, username);
+                primaryStage.setScene(setupScreen.createSetupScene());
+            } else {
+                PuzzleApp newGame = new PuzzleApp(username, false, primaryStage, mainController);
+                primaryStage.setScene(newGame.createGameScene());
+            }
         });
-        bottomPanel.getChildren().add(backToMenuButton);
+
+        Button backToMenuButton = new Button("Menú Principal");
+        backToMenuButton.setPrefWidth(180);
+        backToMenuButton.setPrefHeight(40);
+        backToMenuButton.setStyle("-fx-font-size: 16px; -fx-background-color: #f44336; -fx-text-fill: white; -fx-background-radius: 5;");
+        backToMenuButton.setOnAction(e -> {
+            timer.stop();
+            if (solutionTimeline != null) solutionTimeline.stop();
+            primaryStage.setScene(mainController.getMainMenuScene(username));
+        });
+
+        if (intelligentMode) {
+            // ASIGNAR LA INSTANCIA AL CAMPO DE CLASE
+            solveButton = new Button("Resolver");
+            solveButton.setPrefWidth(180);
+            solveButton.setPrefHeight(40);
+            solveButton.setStyle("-fx-font-size: 16px; -fx-background-color: #008CBA; -fx-text-fill: white; -fx-background-radius: 5;");
+            solveButton.setOnAction(e -> solvePuzzleIntelligentMode());
+            bottomPanel.getChildren().addAll(solveButton, replayButton, backToMenuButton);
+        } else {
+            bottomPanel.getChildren().addAll(replayButton, backToMenuButton);
+        }
+
         root.setBottom(bottomPanel);
 
+        Scene scene = new Scene(root, 600, 700);
+        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
 
-        Scene scene = new Scene(root, 600, 650);
         return scene;
     }
 
     private void startTimer() {
-        seconds = 0; // Resetear tiempo al iniciar el juego
-        movesCount = 0; // Resetear movimientos
+        seconds = 0;
+        movesCount = 0;
         timeLabel.setText("Tiempo: 00:00");
         movesLabel.setText("Movimientos: 0");
 
         if (timer != null) {
-            timer.stop(); // Detener si ya estaba corriendo
+            timer.stop();
         }
         timer = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
             seconds++;
@@ -153,21 +204,14 @@ public class PuzzleApp { // Ya no extiende Application directamente, es una clas
     }
 
     private void handleTileClick(int row, int col) {
-        if (game.moveTile(row, col)) {
-            movesCount++;
-            movesLabel.setText("Movimientos: " + movesCount);
-            updateBoard();
-            if (game.isGoalReached()) {
-                timer.stop();
-                double score = calculateScore(seconds, movesCount);
-                String message = String.format("¡Puzzle resuelto por %s en %02d:%02d con %d movimientos!\nTu puntuación: %.2f",
-                        username, (seconds / 60), (seconds % 60), movesCount, score);
-
-                // Guardar la puntuación en el archivo
-                ScoreManager scoreManager = new ScoreManager();
-                scoreManager.updateUserScore(username, seconds, movesCount, score);
-
-                showAlert("¡Felicidades!", message);
+        if (!intelligentMode) {
+            if (game.moveTile(row, col)) {
+                movesCount++;
+                movesLabel.setText("Movimientos: " + movesCount);
+                updateBoard();
+                if (game.isGoalReached()) {
+                    gameCompleted();
+                }
             }
         }
     }
@@ -177,71 +221,145 @@ public class PuzzleApp { // Ya no extiende Application directamente, es una clas
         for (int i = 0; i < GRID_SIZE; i++) {
             for (int j = 0; j < GRID_SIZE; j++) {
                 buttons[i][j].setText(board[i][j] == 0 ? "" : String.valueOf(board[i][j]));
-                buttons[i][j].setStyle("-fx-font-size: 24px; -fx-background-color: #f0f0f0; -fx-border-color: #ccc; -fx-border-width: 1px;"); // Resetear estilo
+                buttons[i][j].setStyle("-fx-font-size: 24px; -fx-background-color: #f0f0f0; -fx-border-color: #ccc; -fx-border-width: 1px;");
             }
         }
         highlightedButton = null;
     }
 
+    private void gameCompleted() {
+        timer.stop();
+        if (solutionTimeline != null) solutionTimeline.stop();
+
+        double score = calculateScore(seconds, movesCount);
+        String message = String.format("¡Puzzle resuelto por %s en %02d:%02d con %d movimientos!\nTu puntuación: %.2f",
+                username, (seconds / 60), (seconds % 60), movesCount, score);
+
+        ScoreManager scoreManager = new ScoreManager();
+        scoreManager.updateUserScore(username, seconds, movesCount, score);
+
+        showAlert("¡Felicidades!", message, Alert.AlertType.INFORMATION);
+    }
+
     private void suggestMove() {
-        PuzzleState currentState = game.getCurrentState();
-        int currentManhattanDistance = game.calculateManhattanDistance(currentState);
-        List<PuzzleState> nextPossibleStates = game.getPossibleNextStates(currentState);
-        PuzzleState bestNextState = null;
-        int minManhattanDistance = Integer.MAX_VALUE;
+        if (!intelligentMode) {
+            PuzzleState currentState = game.getCurrentState();
+            List<PuzzleState> nextPossibleStates = game.getPossibleNextStates(currentState);
 
-        for (PuzzleState nextState : nextPossibleStates) {
-            int distance = game.calculateManhattanDistance(nextState);
-            if (distance < minManhattanDistance) {
-                minManhattanDistance = distance;
-                bestNextState = nextState;
-            }
-        }
+            PuzzleState bestNextState = null;
+            int minManhattanDistance = game.calculateManhattanDistance(currentState);
 
-        if (bestNextState != null && minManhattanDistance < currentManhattanDistance) {
-            int movedRow = -1, movedCol = -1;
-            int[][] boardNow = currentState.getBoard();
-
-            for (int i = 0; i < GRID_SIZE; i++) {
-                for (int j = 0; j < GRID_SIZE; j++) {
-                    if (boardNow[i][j] != bestNextState.getBoard()[i][j] && boardNow[i][j] != 0) {
-                        movedRow = i;
-                        movedCol = j;
-                        break;
-                    }
+            for (PuzzleState nextState : nextPossibleStates) {
+                int distance = game.calculateManhattanDistance(nextState);
+                if (distance < minManhattanDistance) {
+                    minManhattanDistance = distance;
+                    bestNextState = nextState;
                 }
-                if (movedRow != -1) break;
             }
 
-            if (movedRow != -1 && movedCol != -1) {
-                // Simula un click para mover la pieza sugerida
-                handleTileClick(movedRow, movedCol);
+            if (bestNextState != null && minManhattanDistance < game.calculateManhattanDistance(currentState)) {
+                int movedRow = -1, movedCol = -1;
+                int[][] boardNow = currentState.getBoard();
+                int[][] boardNext = bestNextState.getBoard();
+
+                for (int r = 0; r < GRID_SIZE; r++) {
+                    for (int c = 0; c < GRID_SIZE; c++) {
+                        if (boardNow[r][c] != boardNext[r][c] && boardNow[r][c] != 0) {
+                            movedRow = r;
+                            movedCol = c;
+                            break;
+                        }
+                    }
+                    if (movedRow != -1) break;
+                }
+
+                if (movedRow != -1 && movedCol != -1) {
+                    if (highlightedButton != null) {
+                        highlightedButton.setStyle("-fx-font-size: 24px; -fx-background-color: #f0f0f0; -fx-border-color: #ccc; -fx-border-width: 1px;");
+                    }
+                    highlightedButton = buttons[movedRow][movedCol];
+                    highlightedButton.setStyle("-fx-font-size: 24px; -fx-background-color: #90EE90; -fx-border-color: #006400; -fx-border-width: 2px;");
+                }
+            } else {
+                showAlert("Sugerencia", "No hay un movimiento que mejore la distancia de Manhattan en este momento.", Alert.AlertType.INFORMATION);
             }
-        } else {
-            showAlert("Sugerencia", "No hay un mejor movimiento inmediato disponible.");
         }
     }
 
-    private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+
+    private void solvePuzzleIntelligentMode() {
+        timer.stop();
+        // Deshabilitar todos los botones del tablero
+        for (int i = 0; i < GRID_SIZE; i++) {
+            for (int j = 0; j < GRID_SIZE; j++) {
+                buttons[i][j].setDisable(true);
+            }
+        }
+        // Deshabilitar el botón de "Resolver" usando la referencia directa
+        if (solveButton != null) { // Agrega esta verificación por seguridad
+            solveButton.setDisable(true);
+        }
+
+
+        solutionPath = game.findSolutionBFS();
+
+        if (solutionPath == null) {
+            showAlert("No se encontró solución", "No se pudo encontrar una solución para el estado inicial y objetivo dados. Asegúrese de que el puzzle sea resoluble.", Alert.AlertType.ERROR);
+            // Re-habilitar botones si no hay solución para que el usuario pueda volver al menú
+            for (int i = 0; i < GRID_SIZE; i++) {
+                for (int j = 0; j < GRID_SIZE; j++) {
+                    buttons[i][j].setDisable(false);
+                }
+            }
+            if (solveButton != null) { // Re-habilitar el botón de resolver
+                solveButton.setDisable(false);
+            }
+            return;
+        }
+
+        currentSolutionStep = 0;
+        seconds = 0;
+        movesCount = 0;
+
+        solutionTimeline = new Timeline(new KeyFrame(Duration.seconds(0.5), e -> {
+            if (currentSolutionStep < solutionPath.size()) {
+                PuzzleState nextState = solutionPath.get(currentSolutionStep);
+                game.setCurrentState(nextState);
+                updateBoard();
+
+                if (currentSolutionStep > 0) {
+                    movesCount++;
+                    movesLabel.setText("Movimientos: " + movesCount);
+                }
+                seconds++;
+                int minutes = seconds / 60;
+                int secs = seconds % 60;
+                timeLabel.setText(String.format("Tiempo: %02d:%02d", minutes, secs));
+
+                currentSolutionStep++;
+            } else {
+                solutionTimeline.stop();
+                gameCompleted();
+            }
+        }));
+        solutionTimeline.setCycleCount(solutionPath.size());
+        solutionTimeline.play();
+    }
+
+
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
     }
 
-    // Calcula una puntuación: menos tiempo y menos movimientos = mayor puntuación
     private double calculateScore(int timeInSeconds, int moves) {
-        // Una fórmula de ejemplo:
-        // Puntuación base alta, penalizada por tiempo y movimientos.
-        // Los movimientos tienen un peso ligeramente mayor que el tiempo.
         double baseScore = 10000.0;
-        double timePenalty = timeInSeconds * 1.5; // Cada segundo resta 1.5 puntos
-        double movesPenalty = moves * 5.0; // Cada movimiento resta 5 puntos
-
+        double timePenalty = timeInSeconds * 1.5;
+        double movesPenalty = moves * 5.0;
         double score = baseScore - timePenalty - movesPenalty;
-
-        // Asegurarse de que la puntuación no sea negativa
         return Math.max(0, score);
     }
 }

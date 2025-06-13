@@ -1,5 +1,24 @@
 /* styles.css */
+
+/* Regla para PasswordField (si aún no la tienes) */
 .password-field {
-    -fx-display-caret: true; /* Asegura que el cursor se muestre */
-    -fx-echo-char: "*"; /* Cambia el carácter de eco a un asterisco */
+    -fx-echo-char: "*";
 }
+
+/* --- Nuevas reglas para quitar la opacidad de los botones deshabilitados --- */
+
+/* Para los botones del tablero */
+.button:disabled {
+    -fx-opacity: 1.0; /* Quita la opacidad, la deja en 100% */
+    -fx-text-fill: -fx-text-base-color; /* Asegura que el color del texto sea el normal si cambia al deshabilitarse */
+    -fx-effect: none; /* Quita cualquier efecto de sombra o brillo que ponga por defecto */
+}
+
+/* Específicamente para el botón "Resolver" (si quieres aplicar estilos solo a ese) */
+/* Si ya tienes un ID o clase específica para el botón resolver, úsala aquí. */
+/* Por ejemplo, si le pones un ID a solveButton: solveButton.setId("solve-button"); */
+/* #solve-button:disabled {
+    -fx-opacity: 1.0;
+    -fx-text-fill: white;
+    -fx-effect: none;
+} */
