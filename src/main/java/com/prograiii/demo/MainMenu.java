@@ -21,14 +21,10 @@ public class MainMenu {
         this.mainController = mainController;
     }
 
-    public String getUsername() {
-        return username;
-    }
-
     public Scene createMainMenuScene() {
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(20));
-        root.setStyle("-fx-background-color: #F8F8F8;"); // Fondo más claro
+        root.setStyle("-fx-background-color: #F8F8F8;");
 
         Label title = new Label("8- PUZZLE GAME");
         title.setStyle("-fx-font-size: 40px; -fx-font-weight: bold; -fx-text-fill: #333;");
@@ -38,22 +34,21 @@ public class MainMenu {
         Label welcomeLabel = new Label("Bienvenido, " + username + "!");
         welcomeLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #555;");
         BorderPane.setAlignment(welcomeLabel, Pos.CENTER);
-        root.setBottom(welcomeLabel); // Se moverá al centro-abajo en el VBox
+        // Eliminado del .setBottom, ahora se añade al VBox central
 
-        VBox gameControls = new VBox(20); // Más espacio entre botones
+        VBox gameControls = new VBox(20);
         gameControls.setAlignment(Pos.CENTER);
         gameControls.setPadding(new Insets(20));
 
         Button startGameButton = new Button("Iniciar Juego");
-        startGameButton.setPrefSize(200, 50); // Mayor tamaño para los botones
+        startGameButton.setPrefSize(200, 50);
         startGameButton.setStyle("-fx-font-size: 20px; -fx-background-color: #4CAF50; -fx-text-fill: white; -fx-background-radius: 5;");
         startGameButton.setOnAction(e -> {
-            System.out.println("Iniciando juego para " + username);
-            // Crea una nueva instancia de PuzzleApp y muestra su escena
-            // Por ahora, el modo inteligente es falso por defecto.
-            PuzzleApp puzzleApp = new PuzzleApp(username, false, primaryStage, mainController);
-            primaryStage.setScene(puzzleApp.createGameScene());
-            primaryStage.setTitle("8-Puzzle - Jugando");
+            System.out.println("Navegando a selección de modo de juego...");
+            // Navegar a la pantalla de selección de modo de juego
+            GameModeSelectionScreen selectionScreen = new GameModeSelectionScreen(primaryStage, mainController, username);
+            primaryStage.setScene(selectionScreen.createSelectionScene());
+            primaryStage.setTitle("8-Puzzle - Seleccionar Modo");
         });
 
         Button scoresButton = new Button("Ver Puntajes");
@@ -61,12 +56,10 @@ public class MainMenu {
         scoresButton.setStyle("-fx-font-size: 20px; -fx-background-color: #008CBA; -fx-text-fill: white; -fx-background-radius: 5;");
         scoresButton.setOnAction(e -> {
             System.out.println("Mostrando puntajes...");
-            // Pasar el username actual a ScoreDisplayScreen
-            ScoreDisplayScreen scoreDisplay = new ScoreDisplayScreen(primaryStage, mainController, username);
+            ScoreDisplayScreen scoreDisplay = new ScoreDisplayScreen(primaryStage, mainController, username); // Pasa el username
             primaryStage.setScene(scoreDisplay.createScoreScene());
             primaryStage.setTitle("8-Puzzle - Mejores Puntajes");
         });
-
 
         Button logoutButton = new Button("Cerrar Sesión");
         logoutButton.setPrefSize(200, 50);
@@ -76,9 +69,13 @@ public class MainMenu {
             System.out.println("Sesión cerrada.");
         });
 
-        gameControls.getChildren().addAll(welcomeLabel, startGameButton, scoresButton, logoutButton); // Añade welcomeLabel aquí
+        gameControls.getChildren().addAll(welcomeLabel, startGameButton, scoresButton, logoutButton);
         root.setCenter(gameControls);
 
-        return new Scene(root, 600, 400);
+        return new Scene(root, 600, 450); // Aumentado ligeramente el tamaño
+    }
+
+    public String getUsername() {
+        return username;
     }
 }

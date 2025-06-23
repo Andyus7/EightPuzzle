@@ -1,6 +1,5 @@
 package com.prograiii.demo;
 
-import com.prograiii.demo.MainMenu;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -22,8 +21,8 @@ public class LoginRegisterScreen extends Application {
     private Scene loginRegisterScene;
     private LoginScreen loginScreen;
     private RegisterScreen registerScreen;
-    private MainMenu mainMenu; // Instancia del menú principal
-    private String currentUsername; // Para almacenar el usuario que inició sesión
+    private MainMenu mainMenu;
+    private String currentUsername;
 
     @Override
     public void start(Stage primaryStage) {
@@ -34,9 +33,6 @@ public class LoginRegisterScreen extends Application {
         this.registerScreen = new RegisterScreen(this, primaryStage);
 
         loginRegisterScene = createLoginRegisterScene();
-        // Las escenas de login y registro se crearán dinámicamente cuando se necesiten
-        // o se inicializarán aquí si prefieres tenerlas cargadas de antemano.
-        // Por ahora, se mantendrá la creación en el start y se accederá a ellas mediante getLoginScene/getRegisterScene
 
         primaryStage.setTitle("Bienvenido al 8-Puzzle");
         primaryStage.setScene(loginRegisterScene);
@@ -65,18 +61,15 @@ public class LoginRegisterScreen extends Application {
         loginButton.setPrefHeight(40);
         loginButton.setStyle("-fx-font-size: 18px; -fx-background-color: #4CAF50; -fx-text-fill: white; -fx-background-radius: 5;");
 
-
         Button registerButton = new Button("Registrarse");
         registerButton.setPrefWidth(200);
         registerButton.setPrefHeight(40);
         registerButton.setStyle("-fx-font-size: 18px; -fx-background-color: #2196F3; -fx-text-fill: white; -fx-background-radius: 5;");
 
-
         Button exitButton = new Button("Salir");
         exitButton.setPrefWidth(100);
         exitButton.setPrefHeight(30);
         exitButton.setStyle("-fx-font-size: 16px; -fx-background-color: #f44336; -fx-text-fill: white; -fx-background-radius: 5;");
-
 
         VBox buttonsBox = new VBox(15);
         buttonsBox.setAlignment(Pos.CENTER);
@@ -94,8 +87,8 @@ public class LoginRegisterScreen extends Application {
         root.getChildren().addAll(title, buttonsBox);
 
         exitButton.setOnAction(e -> primaryStage.close());
-        loginButton.setOnAction(e -> primaryStage.setScene(loginScreen.createLoginScreen())); // Crea la escena de login
-        registerButton.setOnAction(e -> primaryStage.setScene(registerScreen.createRegisterScreen())); // Crea la escena de registro
+        loginButton.setOnAction(e -> primaryStage.setScene(loginScreen.createLoginScreen()));
+        registerButton.setOnAction(e -> primaryStage.setScene(registerScreen.createRegisterScreen()));
 
         return new Scene(mainPane, 600, 400);
     }
@@ -104,28 +97,32 @@ public class LoginRegisterScreen extends Application {
         return loginRegisterScene;
     }
 
-    // Método para obtener la escena del menú principal (crea si no existe)
     public Scene getMainMenuScene(String username) {
-        this.currentUsername = username; // Almacena el usuario actual
-        // Recrear si mainMenu es null o si el username almacenado en mainMenu es diferente
-        // (esto asegura que el menú de bienvenida se actualice para el usuario logueado)
+        this.currentUsername = username;
         if (mainMenu == null || !mainMenu.getUsername().equals(username)) {
             mainMenu = new MainMenu(username, primaryStage, this);
         }
         return mainMenu.createMainMenuScene();
     }
 
-    // Getter para el nombre de usuario actual
     public String getCurrentUsername() {
         return currentUsername;
     }
 
-    // Método para navegar a la pantalla de juego (llamado desde LoginScreen)
+    // Nuevo método para navegar a la pantalla de juego (modo normal)
     public void goToGameScreen(String username, boolean intelligentMode) {
-        this.currentUsername = username; // Asegurarse de que el controlador sabe quién juega
+        this.currentUsername = username;
         PuzzleApp puzzleApp = new PuzzleApp(username, intelligentMode, primaryStage, this);
         primaryStage.setScene(puzzleApp.createGameScene());
         primaryStage.setTitle("8-Puzzle - Jugando como " + username);
+    }
+
+    // Nuevo método para navegar a la pantalla de juego (modo inteligente con estados definidos)
+    public void goToGameScreen(String username, boolean intelligentMode, PuzzleState initialState, PuzzleState goalState) {
+        this.currentUsername = username;
+        PuzzleApp puzzleApp = new PuzzleApp(username, intelligentMode, primaryStage, this, initialState, goalState);
+        primaryStage.setScene(puzzleApp.createGameScene());
+        primaryStage.setTitle("8-Puzzle - Modo Inteligente (" + username + ")");
     }
 
     public static void main(String[] args) {
